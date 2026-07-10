@@ -181,5 +181,67 @@ export class PlayerService {
       totalLosses: dbUser.totalLosses,
     };
   }
+
+  /**
+   * Authenticates player, generates a session token, and saves it in Redis Strings with a 24h TTL.
+   */
+  static async login(email: string, passwordSecret: string) {
+    // 1. Find user in MySQL
+    const dbUser = await User.findOne({
+      where: { email },
+    });
+
+    if (!dbUser) {
+      throw new Error('Invalid email or password.');
+    }
+
+    // 2. Compare passwords
+    const isMatch = await bcrypt.compare(passwordSecret, dbUser.passwordHash);
+    if (!isMatch) {
+      throw new Error('Invalid email or password.');
+    }
+
+    // 3. Generate random session token
+    const crypto = require('crypto');
+    const token = crypto.randomUUID();
+    const sessionKey = `session:${token}`;
+
+    try {
+      // 4. Save session token in Redis Strings mapping to Player ID
+      // 'EX', 86400 sets the key to automatically expire in 24 hours (86400 seconds)
+      await redis.set(sessionKey, dbUser.id.toString(), 'EX', 86400);
+      console.log(`🔑 Created session in Redis for user ${dbUser.username}. Token: ${token}`);
+    } catch (redisErr) {
+      console.error('⚠️ Redis session storage failed:', redisErr);
+      throw new Error('Authentication service temporarily unavailable.');
+    }
+
+    return {
+      token,
+      player: {
+        id: dbUser.id,
+        username: dbUser.username,
+        email: dbUser.email,
+        level: dbUser.level,
+      },
+    };
+  }
+
+  /**
+   * Destroys the player's active session in Redis.
+   */
+  static async logout(token: string) {
+    const sessionKey = `session:${token}`;
+    try {
+      // Delete the session key from Redis
+      const deletedCount = await redis.del(sessionKey);
+      console.log(`🚪 Destroyed session in Redis for token. Deleted count: ${deletedCount}`);
+      return deletedCount > 0;
+    } catch (redisErr) {
+      console.error('⚠️ Redis session deletion failed:', redisErr);
+      return false;
+    }
+  }
 }
+
 
