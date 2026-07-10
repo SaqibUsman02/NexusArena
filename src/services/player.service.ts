@@ -3,11 +3,7 @@ import User from '../models/user.model';
 import { redis } from '../redisClient';
 
 export class PlayerService {
-  /**
-   * Registers a new player in MySQL and caches their stats in Redis.
-   */
   static async register(username: string, email: string, passwordSecret: string) {
-    // 1. Check if user already exists in MySQL
     const existingUser = await User.findOne({
       where: { email },
     });
@@ -24,19 +20,15 @@ export class PlayerService {
       throw new Error('Username is already taken.');
     }
 
-    // 2. Hash the password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(passwordSecret, salt);
 
-    // 3. Create user in MySQL
     const newUser = await User.create({
       username,
       email,
       passwordHash,
     });
 
-    // 4. Cache user profile statistics in a Redis Hash
-    // This allows fast real-time access to player data during matches
     const redisKey = `player:${newUser.id}`;
     
     try {
@@ -46,17 +38,12 @@ export class PlayerService {
         totalWins: newUser.totalWins.toString(),
         totalLosses: newUser.totalLosses.toString(),
       });
-      
-      // Set TTL to 1 hour to prevent orphaned cache data
       await redis.expire(redisKey, 3600);
-      
       console.log(`💾 Cached player stats in Redis Hash: ${redisKey}`);
     } catch (redisErr) {
-      // We don't fail the registration if Redis is down (high availability principle)
       console.error('⚠️ Redis caching failed during registration:', redisErr);
     }
 
-    // Return user without password hash
     return {
       id: newUser.id,
       username: newUser.username,
@@ -68,14 +55,10 @@ export class PlayerService {
     };
   }
 
-  /**
-   * Retrieves player stats, checking Redis cache first.
-   */
   static async getPlayerProfile(id: number) {
     const redisKey = `player:${id}`;
 
     try {
-      // Attempt to retrieve from Redis Hash
       const cachedPlayer = await redis.hgetall(redisKey);
 
       if (Object.keys(cachedPlayer).length > 0) {
@@ -93,7 +76,6 @@ export class PlayerService {
       console.error('⚠️ Redis fetch failed:', redisErr);
     }
 
-    // Cache Miss: Query MySQL
     console.log(`🐢 Redis Cache MISS! Querying MySQL for player ${id}...`);
     const dbUser = await User.findByPk(id);
 
@@ -101,7 +83,6 @@ export class PlayerService {
       throw new Error('Player not found.');
     }
 
-    // Write-back to Redis cache
     try {
       const redisKey = `player:${dbUser.id}`;
       await redis.hset(redisKey, {
@@ -126,27 +107,21 @@ export class PlayerService {
     };
   }
 
-  /**
-   * Updates player info in MySQL and keeps the Redis cache in sync.
-   */
   static async updatePlayer(
     id: number,
     data: { username?: string; level?: number; totalWins?: number; totalLosses?: number }
   ) {
-    // 1. Find player in MySQL
     const dbUser = await User.findByPk(id);
     if (!dbUser) {
       throw new Error('Player not found.');
     }
 
-    // 2. Update MySQL
     if (data.username !== undefined) dbUser.username = data.username;
     if (data.level !== undefined) dbUser.level = data.level;
     if (data.totalWins !== undefined) dbUser.totalWins = data.totalWins;
     if (data.totalLosses !== undefined) dbUser.totalLosses = data.totalLosses;
     await dbUser.save();
 
-    // 3. Update Redis cache if it exists
     const redisKey = `player:${id}`;
     try {
       const cacheExists = await redis.exists(redisKey);
@@ -161,9 +136,7 @@ export class PlayerService {
         if (data.totalLosses !== undefined) hashUpdates.totalLosses = data.totalLosses.toString();
 
         if (Object.keys(hashUpdates).length > 0) {
-          // HSET can take an object and update only the specified keys
           await redis.hset(redisKey, hashUpdates);
-          // Refresh the expiration time
           await redis.expire(redisKey, 3600);
         }
       } else {
@@ -182,11 +155,7 @@ export class PlayerService {
     };
   }
 
-  /**
-   * Authenticates player, generates a session token, and saves it in Redis Strings with a 24h TTL.
-   */
   static async login(email: string, passwordSecret: string) {
-    // 1. Find user in MySQL
     const dbUser = await User.findOne({
       where: { email },
     });
@@ -195,20 +164,16 @@ export class PlayerService {
       throw new Error('Invalid email or password.');
     }
 
-    // 2. Compare passwords
     const isMatch = await bcrypt.compare(passwordSecret, dbUser.passwordHash);
     if (!isMatch) {
       throw new Error('Invalid email or password.');
     }
 
-    // 3. Generate random session token
     const crypto = require('crypto');
     const token = crypto.randomUUID();
     const sessionKey = `session:${token}`;
 
     try {
-      // 4. Save session token in Redis Strings mapping to Player ID
-      // 'EX', 86400 sets the key to automatically expire in 24 hours (86400 seconds)
       await redis.set(sessionKey, dbUser.id.toString(), 'EX', 86400);
       console.log(`🔑 Created session in Redis for user ${dbUser.username}. Token: ${token}`);
     } catch (redisErr) {
@@ -227,13 +192,9 @@ export class PlayerService {
     };
   }
 
-  /**
-   * Destroys the player's active session in Redis.
-   */
   static async logout(token: string) {
     const sessionKey = `session:${token}`;
     try {
-      // Delete the session key from Redis
       const deletedCount = await redis.del(sessionKey);
       console.log(`🚪 Destroyed session in Redis for token. Deleted count: ${deletedCount}`);
       return deletedCount > 0;
@@ -243,5 +204,3 @@ export class PlayerService {
     }
   }
 }
-
-
