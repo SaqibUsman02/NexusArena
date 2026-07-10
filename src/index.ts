@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
 import { connectDB } from './config/db';
 import sequelize from './config/db';
 import playerRoutes from './routes/player.routes';
@@ -12,6 +13,9 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// Serve static files from Frontend directory
+app.use(express.static(path.join(__dirname, '../Frontend')));
 
 const PORT = process.env.PORT || 3000;
 

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Arena Lobby 🏆</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Header Section -->
+    <header>
+      <div class="logo-section">
+        <h1><span class="logo-icon">🏆</span> TOURNAMENT ARENA</h1>
+      </div>
+      <div class="header-status">
+        <span id="connection-indicator" class="winner-tag" style="background: rgba(16,185,129,0.1); color: var(--success);">
+          📡 Server Connected
+        </span>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      
+      <!-- Left Sidebar: Auth & Profile -->
+      <aside class="sidebar">
+        
+        <!-- Auth Form Card -->
+        <div id="auth-card" class="glass-card auth-card">
+          <h2 id="auth-title">Player Sign In</h2>
+          <form id="auth-form">
+            <!-- Register Username field (hidden by default) -->
+            <div id="username-group" class="form-group hidden">
+              <label for="reg-username">Username</label>
+              <input type="text" id="reg-username" class="form-input" placeholder="e.g. ninja99">
+            </div>
+
+            <div class="form-group">
+              <label for="auth-email">Email Address</label>
+              <input type="email" id="auth-email" class="form-input" required placeholder="ninja@example.com">
+            </div>
+
+            <div class="form-group">
+              <label for="auth-password">Password</label>
+              <input type="password" id="auth-password" class="form-input" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-full">Sign In</button>
+          </form>
+          <div id="auth-toggle-link" class="auth-toggle">
+            Don't have an account? <span id="auth-toggle-action">Register here</span>
+          </div>
+        </div>
+
+        <!-- Profile / Session Card (Hidden until logged in) -->
+        <div id="profile-card" class="glass-card profile-card hidden">
+          <h2>Player Profile</h2>
+          <div class="profile-info">
+            <div class="profile-username" id="profile-display-name">-</div>
+            
+            <div class="stat-row">
+              <span class="stat-label">Skill level</span>
+              <span class="stat-value level" id="profile-level">Level -</span>
+            </div>
+
+            <div class="stat-row">
+              <span class="stat-label">Total Wins</span>
+              <span class="stat-value wins" id="profile-wins">0</span>
+            </div>
+
+            <div class="stat-row">
+              <span class="stat-label">Total Losses</span>
+              <span class="stat-value losses" id="profile-losses">0</span>
+            </div>
+
+            <button id="logout-btn" class="btn btn-danger btn-full">Sign Out</button>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Right Main Content Area -->
+      <main class="dashboard-content">
+        
+        <!-- Arena Matchmaking and Leaderboards -->
+        <div class="arena-row">
+          
+          <!-- Matchmaking Radar Control Center -->
+          <div class="glass-card arena-card">
+            <div class="radar-container">
+              <div class="radar-pulse"></div>
+              <div class="radar-pulse"></div>
+              <div class="radar-pulse"></div>
+              <div id="radar-center-node" class="radar-center"></div>
+            </div>
+            
+            <h2 id="matchmaking-title" class="text-center">Arena Matchmaking</h2>
+            <p id="matchmaking-desc" class="text-muted text-center" style="margin-bottom: 1.5rem; max-width: 320px;">
+              Authenticate to join the competitive matching pool.
+            </p>
+
+            <div id="matchmaking-controls" class="hidden">
+              <button id="matchmake-btn" class="btn btn-primary">Find Match</button>
+              <button id="cancel-matchmake-btn" class="btn btn-secondary hidden">Cancel Queue</button>
+            </div>
+            
+            <div id="queue-timer-display" class="queue-timer hidden">
+              Searching: <span id="queue-sec">0s</span>
+            </div>
+          </div>
+
+          <!-- Real-Time Leaderboard Card -->
+          <div class="glass-card leaderboard-card">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h2>Leaderboard (Sorted Set)</h2>
+              <button id="refresh-leaderboard-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                Refresh
+              </button>
+            </div>
+            <div style="overflow-x: auto; flex-grow: 1;">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-list">
+                  <tr>
+                    <td colspan="3" class="text-center text-muted" style="padding: 2rem;">
+                      No players registered on the scoreboard yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Historical Match Feed -->
+        <div class="glass-card history-card">
+          <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2>Tournament Match History (MySQL Ingestion Queue)</h2>
+            <button id="refresh-history-btn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+              Refresh Feed
+            </button>
+          </div>
+          <div class="history-list" id="match-history-list">
+            <div class="text-center text-muted" style="padding: 3rem;">
+              No matches played yet. Start a match in matchmaking!
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Match VS Modal (Triggered when match is found in queue) -->
+  <div id="match-modal-overlay" class="modal-overlay">
+    <div class="glass-card match-modal">
+      <div class="match-vs-title">MATCH SECURED ⚔️</div>
+      
+      <div class="match-matchup">
+        <div class="match-competitor">
+          <h3 id="competitor-1-name">Player 1</h3>
+          <p id="competitor-1-details">Level 1</p>
+        </div>
+        <div class="vs-divider">VS</div>
+        <div class="match-competitor">
+          <h3 id="competitor-2-name">Opponent</h3>
+          <p id="competitor-2-details">Level 1</p>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 1rem;">
+        <button id="simulate-game-btn" class="btn btn-primary">Simulate Game Result</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
