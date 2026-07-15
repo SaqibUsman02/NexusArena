@@ -28,7 +28,7 @@ export class PlayerController {
    * GET /api/players/:id
    */
   static async getProfile(req: Request, res: Response): Promise<any> {
-    const playerId = parseInt(req.params.id, 10);
+    const playerId = parseInt(req.params.id as string, 10);
     console.log("PlayerId,",playerId);
     
 
@@ -50,7 +50,7 @@ export class PlayerController {
    * PUT /api/players/:id
    */
   static async update(req: Request, res: Response): Promise<any> {
-    const playerId = parseInt(req.params.id, 10);
+    const playerId = parseInt(req.params.id as string, 10);
     const { username, level, totalWins, totalLosses } = req.body;
 
     if (isNaN(playerId)) {

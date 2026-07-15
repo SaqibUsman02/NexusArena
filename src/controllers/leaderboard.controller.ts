@@ -45,7 +45,7 @@ export class LeaderboardController {
    * Get the rank of a specific player.
    */
   static async getRank(req: Request, res: Response): Promise<any> {
-    const playerId = parseInt(req.params.playerId, 10);
+    const playerId = parseInt(req.params.playerId as string, 10);
 
     if (isNaN(playerId)) {
       return res.status(400).json({ error: 'Invalid Player ID.' });
